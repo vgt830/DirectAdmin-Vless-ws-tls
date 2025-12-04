@@ -1,4 +1,4 @@
-// ====== 三个核心变量 ======
+// ====== 只修改三个核心变量 UUID/PORT/DOMAIN ======
 
 const UUID   = (process.env.UUID   || "00000000-0000-0000-0000-000000000000").trim(); // 双引号内填入UUID
 
@@ -14,12 +14,11 @@ const BEST_DOMAINS = [
   "www.visa.com",
   "www.wto.org",
   "shopify.com",
-  "time.is ",
+  "time.is",
   "www.noq.hk",
   "www.visa.com.hk",
   "www.visa.com.tw",
 ];
-
 
 // ============================================================
 // ===============            模块加载区             ===============
