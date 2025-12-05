@@ -2,7 +2,7 @@
 
 const UUID   = (process.env.UUID   || "00000000-0000-0000-0000-000000000000").trim(); // 双引号内填入UUID
 
-const PORT   = (process.env.PORT   || "53456").trim(); // 端口范围建议 10000~65000
+const PORT   = (process.env.PORT   || "56789").trim(); // 端口范围建议 10000~65000
 
 const DOMAIN = (process.env.DOMAIN || "your-domain.example.com").trim(); // 托管到CF的域名（带前缀） 
 
