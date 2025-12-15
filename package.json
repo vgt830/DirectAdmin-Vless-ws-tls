@@ -1,20 +1,15 @@
 {
-  "name": "vless-ws-tls",
+  "name": "vless-da",
   "version": "1.0.0",
-  "description": "纯净 VLESS-WS-TLS + 优选域名节点",
   "main": "index.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "ws": "^8.18.3"
+    "ws": "^8.18.0"
   },
-  "keywords": [
-    "vless",
-    "websocket",
-    "cloudflare",
-    "proxy"
-  ],
-  "author": "eishare",
-  "license": "MIT"
+  "engines": {
+    "node": ">=20.0.0"
+  }
 }
