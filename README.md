@@ -1,13 +1,15 @@
 ### Vless+ws+tls 单节点部署+多优选域名+自动保活方案 说明：
 
 * 适用DirectAdmin面板node.js环境 
-   （Webfreecloud，Web.C-Servers等）
+   （Webfreecloud，Webhostmost，Web.C-Servers等）
   
 * 随机端口，无需担心端口占用困扰
 
 * 多区域优选域名覆盖，延迟低，网络表现优异！
   
-* DirectAdmin面板设置cron任务实现保活
+* 代码添加保活，每2分钟访问一次domain/uuid
+
+* （可选）Cloudflare Workers保活方案：https://github.com/eishare/keep-alive-DirectDdmin-Node.js
 -----------------------------------------------------------
 
 ### 使用方法：
@@ -28,4 +30,4 @@
    
 * 4：域名/UUID，浏览器访问可见节点链接地址
 
-* 5：CREATE APPLICATION出现异常提醒、APP无法删除？教程视频：
+* 5：APP删除红字报错？教程视频：
