@@ -1,7 +1,7 @@
 ### Vless+ws+tls 单节点部署+多优选域名+自动保活方案 说明：
 
 * 适用DirectAdmin面板node.js环境 
-   （Webfreecloud，Web.C-Servers）
+   （在Webfreecloud测试完美，Webfreecloud待测试）
   
 * 随机端口，无需担心端口占用困扰
 
@@ -29,5 +29,3 @@
           （如出现异常提示，进入第5条）
    
 * 4：域名/UUID，浏览器访问可见节点链接地址
-
-* 5：APP删除红字报错？教程视频：
