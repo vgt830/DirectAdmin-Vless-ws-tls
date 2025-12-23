@@ -1,4 +1,4 @@
-### Vless+ws+tls 自适应端口+单节点部署+多优选域名+CF保活方案 说明：
+### Vless+ws+tls 自适应端口+多优选域名+CF保活方案 说明：
 
 * 最新精简通用版本，适用Webfreecloud、WebHostMost、Web.C-Servers的DirectAdmin面板node.js环境 
   
