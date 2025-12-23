@@ -1,11 +1,14 @@
+process.on("uncaughtException", () => {});
+process.on("unhandledRejection", () => {});
+
 // ====== 只修改两个核心变量 UUID/DOMAIN ======
-
-const UUID = (process.env.UUID || "abcd1eb2-1c20-345a-96fa-cdf394612345").trim();   // 替换"双引号中的UUID"
-const DOMAIN = (process.env.DOMAIN || "abc.domain.dpdns.org").trim();               // 替换"双引号中的完整域名"
-
+const UUID = (process.env.UUID || "abcd1eb2-1c20-345a-96fa-cdf394612345").trim();        // 替换"双引号中的UUID"
+const DOMAIN = (process.env.DOMAIN || "abc.domain.dpdns.org").trim();                    // 替换"双引号中的完整域名"
+ 
 // Panel 配置
 const NAME = "DirectAdmin-easyshare";
-const PORT = 0; // 随机端口
+const LISTEN_PORT = Number(process.env.PORT) || 0;
+
 const BEST_DOMAINS = [
     "www.visa.cn",
     "www.shopify.com",
@@ -18,100 +21,145 @@ const BEST_DOMAINS = [
 // ============================================================
 // =============== 模块加载区 ================================
 // ============================================================
-const http = require('http');
-const net = require('net');
-const { WebSocket, createWebSocketStream } = require("ws");
+const http = require("http");
+const net = require("net");
+const { WebSocketServer, createWebSocketStream } = require("ws");
+
+// ============================================================
+// =============== WebSocket Path ============================
+// ============================================================
+const WS_PATH = `/${UUID}`;
 
 // ============================================================
 // =============== 生成 VLESS 节点链接函数 ====================
 // ============================================================
 function generateLink(address) {
-    return `vless://${UUID}@${address}:443?encryption=none&security=tls&sni=${DOMAIN}&fp=chrome&type=ws&host=${DOMAIN}&path=%2F#${NAME}`;
+    return (
+        `vless://${UUID}@${address}:443` +
+        `?encryption=none&security=tls&sni=${DOMAIN}` +
+        `&fp=chrome&type=ws&host=${DOMAIN}` +
+        `&path=${encodeURIComponent(WS_PATH)}` +
+        `#${NAME}`
+    );
 }
 
 // ============================================================
 // =============== HTTP 服务 ==================================
 // ============================================================
 const server = http.createServer((req, res) => {
+    if (req.headers.upgrade) {
+        res.writeHead(426);
+        return res.end();
+    }
+
     if (req.url === "/") {
         res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-        res.end(`VLESS WS TLS Running\n访问 /${UUID} 查看所有节点\n`);
-    } else if (req.url === `/${UUID}`) {
-        let txt = "═════ EasyShare VLESS-WS-TLS 节点 ═════\n\n";
-        BEST_DOMAINS.forEach(d => txt += generateLink(d) + "\n\n");
-        txt += "节点已全部生成，可全选复制使用。\n";
-        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-        res.end(txt);
-    } else {
-        res.writeHead(404);
-        res.end("404 Not Found");
+        return res.end(`VLESS WS TLS Running\n访问 ${WS_PATH} 查看节点\n`);
     }
+
+    if (req.url === WS_PATH) {
+        let txt = "═════ EasyShare VLESS WS TLS ═════\n\n";
+        for (const d of BEST_DOMAINS) {
+            txt += generateLink(d) + "\n\n";
+        }
+        txt += "节点已全部生成，可直接复制使用。\n";
+
+        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+        return res.end(txt);
+    }
+
+    res.writeHead(404);
+    res.end("404 Not Found");
 });
 
 // ============================================================
 // =============== WebSocket 后端 ============================
 // ============================================================
-const wss = new WebSocket.Server({ server });
-const uuid_clean = UUID.replace(/-/g, "");
+const wss = new WebSocketServer({
+    noServer: true,
+    maxPayload: 256 * 1024,
+});
 
-// WS 连接处理
-wss.on("connection", ws => {
-    let tcp = null; // TCP 对象作用域
+const uuidClean = UUID.replace(/-/g, "");
 
-    ws.on("error", () => { });
-    ws.on("close", () => {
-        try { tcp && tcp.destroy(); } catch { }
+server.on("upgrade", (req, socket, head) => {
+    if (req.url !== WS_PATH) {
+        socket.destroy();
+        return;
+    }
+
+    wss.handleUpgrade(req, socket, head, (ws) => {
+        wss.emit("connection", ws, req);
     });
+});
 
-    ws.once("message", msg => {
-        if (!msg || msg.length < 18) return;
+wss.on("connection", (ws) => {
+    let tcp = null;
 
-        const [VERSION] = msg;
-        const id = msg.slice(1, 17);
-
-        // UUID 校验
-        if (!id.every((v, i) => v === parseInt(uuid_clean.substr(i * 2, 2), 16))) return;
-
-        let p = msg.slice(17, 18).readUInt8() + 19;
-        const port = msg.slice(p, p += 2).readUInt16BE();
-        const ATYP = msg.slice(p, p += 1).readUInt8();
-        let host = "";
-
-        // ATYP 解析 host
-        if (ATYP === 1) {
-            host = msg.slice(p, p += 4).join(".");
-        } else if (ATYP === 2) {
-            const len = msg.slice(p, p + 1).readUInt8();
-            host = new TextDecoder().decode(msg.slice(p + 1, p + 1 + len));
-            p += 1 + len;
-        } else if (ATYP === 3) {
-            host = msg.slice(p, p += 16)
-                .reduce((s, b, i, a) => (i % 2 ? s.concat(a.slice(i - 1, i + 1)) : s), [])
-                .map(b => b.readUInt16BE(0).toString(16))
-                .join(":");
+    ws.once("message", (msg) => {
+        if (!Buffer.isBuffer(msg) || msg.length < 18) {
+            ws.close();
+            return;
         }
 
-        // 发送握手成功
-        ws.send(new Uint8Array([VERSION, 0]));
+        const version = msg[0];
+        const id = msg.slice(1, 17);
 
-        // 建立 TCP + WebSocket 双向管道
-        const duplex = createWebSocketStream(ws);
+        for (let i = 0; i < 16; i++) {
+            if (id[i] !== parseInt(uuidClean.substr(i * 2, 2), 16)) {
+                ws.close();
+                return;
+            }
+        }
+
+        let p = msg[17] + 19;
+        const port = msg.readUInt16BE(p); p += 2;
+        const atyp = msg[p++];
+
+        let host = "";
+
+        if (atyp === 1) {
+            host = Array.from(msg.slice(p, p + 4)).join(".");
+            p += 4;
+        } else if (atyp === 2) {
+            const len = msg[p];
+            host = msg.slice(p + 1, p + 1 + len).toString();
+            p += 1 + len;
+        } else if (atyp === 3) {
+            const raw = msg.slice(p, p + 16);
+            const parts = [];
+            for (let i = 0; i < 16; i += 2) {
+                parts.push(raw.readUInt16BE(i).toString(16));
+            }
+            host = parts.join(":");
+            p += 16;
+        } else {
+            ws.close();
+            return;
+        }
+
+        ws.send(Buffer.from([version, 0]));
+
         tcp = net.connect({ host, port }, () => {
+            tcp.setNoDelay(true);
             tcp.write(msg.slice(p));
+            const duplex = createWebSocketStream(ws);
             duplex.pipe(tcp).pipe(duplex);
         });
 
         tcp.on("error", () => {
-            try { ws.close(); } catch { }
+            try { ws.close(); } catch {}
         });
     });
+
+    ws.on("close", () => {
+        try { tcp && tcp.destroy(); } catch {}
+    });
+
+    ws.on("error", () => {});
 });
 
 // ============================================================
 // =============== 启动 ============================
 // ============================================================
-const listenPort = Number(PORT) || 0;
-server.listen(listenPort, "0.0.0.0", () => {
-    // 访问一次端口，确保 Node.js 完成监听，避免客户端 -1
-    server.address().port;
-});
+server.listen(LISTEN_PORT, "0.0.0.0");
