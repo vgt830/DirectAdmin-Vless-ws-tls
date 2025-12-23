@@ -7,7 +7,7 @@ const DOMAIN = (process.env.DOMAIN || "abc.domain.dpdns.org").trim();           
  
 // Panel 配置
 const NAME = "DirectAdmin-easyshare";
-const LISTEN_PORT = Number(process.env.PORT) || 0;
+const LISTEN_PORT = Number(process.env.PORT) || 0;     // 自适应端口
 
 const BEST_DOMAINS = [
     "www.visa.cn",
